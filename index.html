@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<title>Observatorio · Sistema Solar 3D</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+:root{--cyan:#9cecff;--muted:#9eacc1}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#02040a;color:#f5f8ff;font-family:'DM Sans',sans-serif;-webkit-tap-highlight-color:transparent}
+#universe{position:fixed;inset:0}canvas{display:block}
+.topbar{position:fixed;z-index:3;top:0;left:0;right:0;padding:22px 4.5vw;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
+.top-left{font-size:10px;letter-spacing:.22em;color:#d9eaff;text-transform:uppercase}.top-left span{color:var(--cyan)}
+.top-right{font-size:9px;letter-spacing:.16em;color:#71839d;text-transform:uppercase}
+.bottom{position:fixed;z-index:4;left:0;right:0;bottom:0;padding:17px 4vw calc(23px + env(safe-area-inset-bottom,0px));background:linear-gradient(0deg,rgba(1,4,12,.94),rgba(1,4,12,.48) 70%,transparent)}
+.planet-nav{display:flex;justify-content:center;gap:clamp(8px,1.7vw,25px);align-items:center;flex-wrap:wrap}
+.planet-btn{border:0;background:transparent;color:#8393aa;font:500 10px 'DM Sans';letter-spacing:.1em;text-transform:uppercase;padding:8px 3px;cursor:pointer;position:relative;transition:.25s}
+.planet-btn:after{content:'';position:absolute;bottom:0;left:50%;width:0;height:1px;background:var(--cyan);transform:translateX(-50%);transition:.25s}
+.planet-btn:hover,.planet-btn.active{color:#fff}.planet-btn.active:after{width:100%}
+.nav-caption{text-align:center;margin-top:12px;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:#667994}
+.info{position:fixed;z-index:7;right:3.5vw;top:50%;transform:translate(24px,-50%);width:min(370px,calc(100vw - 28px));max-height:78vh;overflow:auto;padding:26px;border:1px solid #a5eaff35;border-radius:19px;background:linear-gradient(145deg,rgba(12,25,45,.88),rgba(3,8,19,.91));backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);box-shadow:0 22px 90px #000b, inset 0 1px #ffffff0b;opacity:0;pointer-events:none;transition:opacity .45s,transform .45s}
+.info.open{opacity:1;pointer-events:auto;transform:translate(0,-50%)}
+.close{position:absolute;right:15px;top:15px;width:31px;height:31px;border:1px solid #ffffff2b;border-radius:50%;background:#ffffff09;color:#eaf5ff;font-size:19px;cursor:pointer}
+.kicker{font-size:9px;letter-spacing:.24em;text-transform:uppCercase;color:var(--cyan);margin-bottom:10px}
+.info h2{font:500 38px/.98 'Space Grotesk';letter-spacing:-.05em;margin:0 34px 13px 0}
+.info p{font-size:12px;line-height:1.8;color:#bdc9da;margin:0 0 17px}
+.fact-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fact{padding:11px 12px;border:1px solid #ffffff10;border-radius:10px;background:#ffffff08}
+.fact small{display:block;font-size:8px;letter-spacing:.15em;text-transform:uppercase;color:#8095b1;margin-bottom:5px}
+.fact strong{font-size:11px;font-weight:600;color:#f0f8ff}
+.moon-block,.curiosity{margin-top:13px;padding:13px;border-radius:11px;background:#8be9ff0b;border:1px solid #8be9ff1b}
+.moon-block small,.curiosity small{display:block;font-size:8px;letter-spacing:.18em;color:var(--cyan);text-transform:uppercase;margin-bottom:7px}
+.moon-block p,.curiosity p{font-size:11px;line-height:1.65;margin:0;color:#d1dceb}
+.curiosity{background:#ffcc7b0b;border-color:#ffcc7b25}.curiosity small{color:#ffd38b}
+.country-explorer{margin-top:14px;padding:13px;border:1px solid #65dfff35;border-radius:12px;background:#62dfff0b}
+.country-explorer[hidden]{display:none}
+.country-explorer label{display:block;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:#9cecff;margin-bottom:9px}
+.country-explorer select{width:100%;padding:11px 12px;border:1px solid #ffffff24;border-radius:8px;background:#0a1729;color:#effaff;font:12px 'DM Sans';outline:none}
+.country-explorer select option{background:#0a1729;color:#effaff}
+.country-explorer .action{margin-top:9px;width:100%}
+.country-explorer small{display:block;margin-top:9px;font-size:10px;line-height:1.5;color:#8aa0ba}
+.panel-actions{display:flex;gap:8px;margin-top:15px}
+.action{border:1px solid #9cecff55;border-radius:30px;background:#9cecff12;color:#d7f8ff;padding:10px 14px;font:600 9px 'DM Sans';letter-spacing:.13em;text-transform:uppercase;cursor:pointer}
+.action:hover{background:#9cecff26}
+#focus-label{position:fixed;z-index:3;left:50%;top:12%;transform:translateX(-50%);font:500 11px 'Space Grotesk';letter-spacing:.28em;text-transform:uppercase;color:#eaf8ff;text-shadow:0 0 20px #8be9ff;opacity:0;transition:opacity .5s;pointer-events:none;white-space:nowrap}
+#focus-label.show{opacity:1}
+#loading{position:fixed;z-index:9;inset:0;display:grid;place-items:center;background:radial-gradient(ellipse at center,#14243b 0%,#030711 62%,#010208 100%);transition:opacity .7s}
+#loading.hide{opacity:0;pointer-events:none}
+.loader{width:30px;height:30px;border:1px solid #29455d;border-top-color:#9cecff;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 15px}
+.loading-text{font-size:9px;letter-spacing:.22em;color:#9bb0c8;text-transform:uppercase;text-align:center}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---------- Mapa tipo Google Maps ---------- */
+#map-screen{position:fixed;z-index:10;inset:0;background:#05080d;display:none}
+#map-screen.open{display:block;animation:mapIn .9s ease both}
+@keyframes mapIn{from{opacity:0;transform:scale(1.04)}to{opacity:1;transform:scale(1)}}
+#country-map{position:absolute;inset:0}
+.map-top{position:absolute;z-index:5;top:calc(14px + env(safe-area-inset-top,0px));left:14px;right:14px;display:flex;gap:10px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;pointer-events:none}
+.map-top>*{pointer-events:auto}
+.map-left{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.map-right{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.chip{padding:10px 15px;border:1px solid #ffffff30;border-radius:30px;background:#07111dee;color:#eff8ff;font:500 11px 'DM Sans';letter-spacing:.12em;text-transform:uppercase;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.chip.level{color:#9cecff;border-color:#9cecff55}
+select.chip{max-width:190px;outline:none;cursor:pointer}
+select.chip option{background:#0a1729;color:#effaff}
+#map-style,#map-back{background:#07111dee;padding:10px 15px;font-size:10px}
+.map-hint{position:absolute;z-index:5;bottom:calc(46px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);padding:9px 14px;border:1px solid #ffffff20;border-radius:25px;background:#07111ddd;color:#d9e8f5;font-size:10px;text-align:center;backdrop-filter:blur(12px);max-width:calc(100% - 28px);transition:opacity .8s}
+.maplibregl-ctrl-attrib{font-size:9px!important}
+
+@media(max-width:700px){
+ .topbar{padding:16px 18px}.top-right{display:none}
+ .bottom{padding:10px 9px calc(16px + env(safe-area-inset-bottom,0px))}
+ .planet-nav{gap:4px 10px}.planet-btn{font-size:9px}
+ .info{top:auto;bottom:105px;right:12px;max-height:58vh;transform:translateY(20px);padding:19px}
+ .info.open{transform:translateY(0)}.info h2{font-size:31px}
+ #focus-label{top:8%}
+ select.chip{max-width:150px}
+}
+
+/* Controles superiores y laboratorio de eclipses */
+.topbar{pointer-events:none}
+.topbar .top-left,.topbar .top-actions{pointer-events:auto}
+.top-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.top-action{border:1px solid #8feaff55;border-radius:24px;background:rgba(7,17,31,.78);color:#dffaff;padding:10px 14px;font:600 9px 'DM Sans';letter-spacing:.12em;text-transform:uppercase;cursor:pointer;backdrop-filter:blur(12px)}
+.top-action:hover{background:#8feaff20;border-color:#9cecff}
+#eclipse-lab{position:fixed;z-index:12;inset:0;display:none;background:radial-gradient(ellipse at 50% 42%,#10243a 0%,#030711 60%,#010208 100%)}
+#eclipse-lab.open{display:block}
+#eclipse-canvas{position:absolute;inset:0;width:100%;height:100%}
+.eclipse-head{position:absolute;z-index:2;top:22px;left:4vw;right:4vw;display:flex;justify-content:space-between;align-items:center;gap:14px}
+.eclipse-title{font:500 clamp(18px,3vw,30px) 'Space Grotesk';letter-spacing:-.04em}
+.eclipse-sub{font-size:9px;letter-spacing:.18em;color:#9bb1c9;text-transform:uppercase;margin-top:5px}
+.eclipse-panel{position:absolute;z-index:2;left:50%;bottom:28px;transform:translateX(-50%);width:min(620px,calc(100% - 28px));padding:17px;border:1px solid #9cecff38;border-radius:17px;background:#061224d9;backdrop-filter:blur(18px);text-align:center}
+.eclipse-switch{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.eclipse-switch button{border:1px solid #8feaff44;background:#ffffff08;color:#d9efff;border-radius:30px;padding:9px 13px;font:600 9px 'DM Sans';letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+.eclipse-switch button.active{background:#8feaff24;border-color:#9cecff;color:#fff}
+.eclipse-description{font-size:11px;line-height:1.6;color:#b7c8dc}
+#consent-banner{position:fixed;z-index:20;left:16px;right:16px;bottom:16px;max-width:760px;margin:auto;padding:15px 17px;border:1px solid #9cecff44;border-radius:15px;background:#071426f2;box-shadow:0 12px 50px #0009;backdrop-filter:blur(18px);display:none}
+#consent-banner.show{display:block}
+#consent-banner p{margin:0 0 12px;color:#c7d7e8;font-size:11px;line-height:1.6}
+.consent-actions{display:flex;gap:8px;flex-wrap:wrap}
+.consent-actions button{border:1px solid #9cecff55;border-radius:22px;background:#9cecff16;color:#e5faff;padding:9px 13px;font:600 9px 'DM Sans';letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+.consent-actions .reject{border-color:#ffffff30;background:#ffffff08;color:#c5d0df}
+@media(max-width:700px){.topbar{align-items:flex-start}.top-actions{max-width:58%;justify-content:flex-end}.top-action{font-size:8px;padding:8px 10px}.eclipse-head{top:14px}.eclipse-panel{bottom:14px}}
+
+
+/* Adaptación móvil y controles táctiles */
+html,body{overscroll-behavior:none}
+canvas{touch-action:pan-y}
+@media(max-width:700px){
+ .topbar{padding:calc(10px + env(safe-area-inset-top,0px)) 10px 0;gap:8px}
+ .top-left{font-size:8px;letter-spacing:.12em;max-width:34%;line-height:1.5}
+ .top-actions{max-width:64%;gap:5px}
+ .top-action{font-size:7px;letter-spacing:.06em;padding:9px 10px;min-height:36px}
+ .bottom{padding:8px 7px calc(10px + env(safe-area-inset-bottom,0px))}
+ .planet-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px 5px}
+ .planet-btn{font-size:8px;letter-spacing:.04em;padding:8px 2px;min-height:32px}
+ .nav-caption{font-size:7px;letter-spacing:.1em;margin-top:6px}
+ .info{left:9px;right:9px;bottom:calc(95px + env(safe-area-inset-bottom,0px));top:auto;width:auto;max-height:52dvh;padding:16px;border-radius:15px;transform:translateY(16px)}
+ .info.open{transform:translateY(0)}
+ .info h2{font-size:27px}
+ .info p{font-size:11px;line-height:1.6}
+ .fact{padding:8px}.fact strong{font-size:10px}
+ .panel-actions .action{flex:1;padding:10px 8px;font-size:8px}
+ #focus-label{top:calc(54px + env(safe-area-inset-top,0px));font-size:9px;letter-spacing:.16em}
+ .eclipse-head{top:calc(10px + env(safe-area-inset-top,0px));left:10px;right:10px;align-items:flex-start}
+ .eclipse-title{font-size:17px}.eclipse-sub{font-size:7px;letter-spacing:.1em}
+ .eclipse-panel{bottom:calc(10px + env(safe-area-inset-bottom,0px));width:calc(100% - 18px);padding:12px}
+ .eclipse-switch button{font-size:8px;padding:9px 11px}
+ .eclipse-description{font-size:10px}
+ #consent-banner{left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom,0px));padding:12px}
+ #consent-banner p{font-size:10px}
+ .map-top{top:calc(8px + env(safe-area-inset-top,0px));left:8px;right:8px;gap:6px}
+ .map-right{gap:5px}.chip{font-size:9px;padding:9px 10px}
+ select.chip{max-width:125px}
+ .map-hint{font-size:9px;bottom:calc(35px + env(safe-area-inset-bottom,0px))}
+}
+@media(max-width:380px){
+ .top-left{font-size:7px}
+ .top-action{font-size:6px;padding:8px 7px}
+ .planet-btn{font-size:7px}
+ .info{max-height:48dvh}
+}
+
+</style>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" crossorigin="">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+</head>
+<body>
+<div id="universe"></div>
+<div id="loading"><div><div class="loader"></div><div class="loading-text">Atravesando el espacio profundo</div></div></div>
+<header class="topbar"><div class="top-left">OBSERVATORIO <span>· SISTEMA SOLAR</span></div><div class="top-actions"><button class="top-action" id="overview-top">Vista general</button><button class="top-action" id="eclipse-open">Simular eclipses</button></div></header>
+<section id="eclipse-lab" aria-label="Laboratorio de eclipses">
+ <canvas id="eclipse-canvas"></canvas>
+ <div class="eclipse-head"><div><div class="eclipse-title">Laboratorio de eclipses</div><div class="eclipse-sub">Simulación visual · alineación orbital</div></div><button class="top-action" id="eclipse-close">Volver al sistema</button></div>
+ <div class="eclipse-panel"><div class="eclipse-switch"><button id="solar-mode" class="active">Eclipse solar</button><button id="lunar-mode">Eclipse lunar</button></div><div class="eclipse-description" id="eclipse-description">La Luna se interpone entre el Sol y la Tierra. La sombra lunar alcanza una pequeña región de la superficie terrestre.</div></div>
+</section>
+<div id="consent-banner"><p><strong>Analítica opcional.</strong> Si aceptas, este sitio guardará en Firebase datos técnicos generales de la visita (fecha, tipo de dispositivo, navegador, idioma y página). No se solicitan nombre, correo, ubicación precisa ni dirección IP desde este código. Puedes rechazarla y seguir explorando.</p><div class="consent-actions"><button id="analytics-accept">Aceptar analítica</button><button class="reject" id="analytics-reject">Rechazar</button></div></div>
+
+<div id="map-screen">
+ <div class="map-top">
+  <div class="map-left"><span class="chip" id="map-place">Explorando la Tierra</span><span class="chip level" id="map-level">Nivel: países</span></div>
+  <div class="map-right">
+   <select class="chip" id="map-country" aria-label="Cambiar de país"></select>
+   <button class="action" id="map-style">Satélite</button>
+   <button class="action" id="map-back">← Volver al planeta</button>
+  </div>
+ </div>
+ <div id="country-map"></div>
+ <div class="map-hint" id="map-hint">Acerca el mapa: primero verás los países, luego los estados y después las ciudades</div>
+</div>
+
+<div id="focus-label"></div>
+<aside class="info" id="info">
+ <button class="close" id="close" aria-label="Cerrar">×</button>
+ <div class="kicker" id="kicker">Archivo astronómico</div><h2 id="title"></h2><p id="description"></p>
+ <div class="fact-grid" id="facts"></div>
+ <div class="moon-block" id="moon-block"><small id="moon-label">Lunas destacadas</small><p id="moons"></p></div>
+ <div class="curiosity"><small>✧ Dato sorprendente</small><p id="curiosity"></p></div>
+ <div class="country-explorer" id="country-explorer" hidden>
+  <label for="country-select">✦ Explorar un país de la Tierra</label>
+  <select id="country-select"><option value="">Cargando países…</option></select>
+  <button class="action" id="country-zoom">Entrar al país</button>
+  <small>También puedes hacer doble clic (o doble toque) sobre un país del globo.</small>
+ </div>
+ <div class="panel-actions"><button class="action" id="revisit">Acercarme más</button><button class="action" id="overview">Regresar al espacio</button></div>
+</aside>
+<nav class="bottom"><div class="planet-nav" id="planet-nav"></div><div class="nav-caption">Doble clic o doble toque sobre un planeta, luna o el Sol para descubrirlo</div></nav>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" crossorigin=""></script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+/* FIREBASE: proyecto jardin-385dd.
+   Firestore guarda visitas consentidas y Firebase Analytics recibe métricas web.
+   La configuración web identifica el proyecto; no es una clave privada. */
+const firebaseConfig = {
+  apiKey: "AIzaSyCQTNUQvxfsCSTv9BZKHzityH2X0PR8y80",
+  authDomain: "sistemasolar-30c85.firebaseapp.com",
+  projectId: "sistemasolar-30c85",
+  storageBucket: "sistemasolar-30c85.firebasestorage.app",
+  messagingSenderId: "641202258212",
+  appId: "1:641202258:web:26cb2b305c993ef6e7f3b1",
+  measurementId: "G-MVZD1VKRCJ"
+};
+let firebaseDb = null;
+let firebaseAnalytics = null;
+async function startFirebaseAnalytics(){
+  try {
+    const [
+      {initializeApp,getApps},
+      {getFirestore,collection,addDoc,serverTimestamp},
+      {getAnalytics,isSupported}
+    ] = await Promise.all([
+      import('https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js'),
+      import('https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js'),
+      import('https://www.gstatic.com/firebasejs/13.2.0/firebase-analytics.js')
+    ]);
+    const app=getApps().length?getApps()[0]:initializeApp(firebaseConfig);
+    firebaseDb={db:getFirestore(app),collection,addDoc,serverTimestamp};
+    // Analytics puede no estar disponible en algunos navegadores/entornos locales.
+    if(await isSupported()) firebaseAnalytics=getAnalytics(app);
+    await recordVisit();
+  } catch(error){ console.warn('No se pudo iniciar Firebase:',error); }
+}
+function detectBrowser(){const u=navigator.userAgent;return /Edg\//.test(u)?'Edge':/Firefox\//.test(u)?'Firefox':/Chrome\//.test(u)?'Chrome':/Safari\//.test(u)?'Safari':'Otro';}
+function detectDevice(){return /tablet|ipad/i.test(navigator.userAgent)?'Tablet':/mobile|android|iphone/i.test(navigator.userAgent)?'Móvil':'Escritorio';}
+async function recordVisit(){
+  if(!firebaseDb || sessionStorage.getItem('solar_visit_recorded')==='1')return;
+  const payload={createdAt:firebaseDb.serverTimestamp(),browser:detectBrowser(),device:detectDevice(),language:(navigator.language||'').slice(0,12),timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'unknown',screenClass:innerWidth<600?'small':innerWidth<1024?'medium':'large',page:'sistema-solar'};
+  try{await firebaseDb.addDoc(firebaseDb.collection(firebaseDb.db,'visitas'),payload);sessionStorage.setItem('solar_visit_recorded','1');}
+  catch(error){console.warn('No se pudo registrar la visita:',error);}
+}
+function initAnalyticsConsent(){
+  const banner=document.getElementById('consent-banner'),choice=localStorage.getItem('solar_analytics_consent');
+  if(choice==='accepted')startFirebaseAnalytics();
+  else if(!choice)banner.classList.add('show');
+  document.getElementById('analytics-accept').onclick=()=>{localStorage.setItem('solar_analytics_consent','accepted');banner.classList.remove('show');startFirebaseAnalytics()};
+  document.getElementById('analytics-reject').onclick=()=>{localStorage.setItem('solar_analytics_consent','rejected');banner.classList.remove('show')};
+}
+initAnalyticsConsent();
+
+/* =====================================================================
+   DATOS
+   ===================================================================== */
+const TEX='https://threejs.org/examples/textures/planets/';
+const GEO_URLS=[
+ 'https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/ne_110m_admin_0_countries.geojson',
+ 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson'
+];
+// tilt = inclinación del eje (°) · spin = velocidad de rotación · atmo = atmósfera {color, escala, intensidad}
+const bodies=[
+{id:'sun',name:'El Sol',kind:'Estrella · Tipo G',size:2.6,distance:0,tex:TEX+'sun.jpg',tx:'sun',desc:'El Sol es la estrella que mantiene unido nuestro sistema planetario. Su gravedad gobierna las órbitas de los planetas y su energía hace posible la vida en la Tierra. En su núcleo, el hidrógeno se transforma en helio mediante fusión nuclear.',facts:[['Diámetro','1.39 millones km'],['Temperatura','~5,500 °C (superficie)'],['Edad','~4,600 millones años'],['Luz hasta la Tierra','8 min 20 s']],moons:'No tiene lunas. Ocho planetas y muchos cuerpos menores orbitan a su alrededor.',curiosity:'Dentro del Sol cabrían aproximadamente 1.3 millones de Tierras. Su luz tarda poco más de ocho minutos en llegar hasta nosotros.',color:0xffa638,focus:8},
+{id:'mercurio',name:'Mercurio',kind:'Planeta rocoso',size:.42,distance:6.2,tex:TEX+'mercury.jpg',tx:'mercury',bump:1.4,tilt:.03,spin:.0006,desc:'El planeta más pequeño y cercano al Sol. Su superficie antigua está marcada por cráteres y apenas tiene atmósfera para retener el calor, por eso las temperaturas cambian de forma extrema.',facts:[['Diámetro','4,879 km'],['Año','88 días terrestres'],['Día solar','176 días terrestres'],['Temperatura','−180 a 430 °C']],moons:'No tiene lunas conocidas.',curiosity:'Un día solar en Mercurio dura más que su año: tarda 176 días terrestres en completar un ciclo de amanecer a amanecer.',color:0x9b9188,focus:2.1},
+{id:'venus',name:'Venus',kind:'Planeta rocoso',size:.68,distance:9.2,tex:TEX+'venus.jpg',tx:'venus',tilt:177.4,spin:-.0004,atmo:{c:0xffc58a,s:1.07,k:1.1},desc:'Un mundo cubierto por densas nubes amarillentas. Su atmósfera, compuesta principalmente de dióxido de carbono, atrapa el calor mediante un efecto invernadero desbocado.',facts:[['Diámetro','12,104 km'],['Año','225 días terrestres'],['Día','243 días terrestres'],['Temperatura','~465 °C']],moons:'No tiene lunas conocidas.',curiosity:'Venus gira en sentido contrario a la mayoría de los planetas: allí el Sol saldría por el oeste y se pondría por el este.',color:0xd6a36d,focus:2.8},
+{id:'earth',name:'La Tierra',kind:'Planeta rocoso',size:.72,distance:12.7,tex:TEX+'earth_atmos_2048.jpg',tx:'earth',tilt:23.4,spin:.002,atmo:{c:0x5fa8ff,s:1.1,k:1.5},desc:'Nuestro hogar: un planeta dinámico de océanos, continentes, nubes y una atmósfera protectora. Es el único lugar conocido donde existe vida.',facts:[['Diámetro','12,742 km'],['Año','365.25 días'],['Día','23 h 56 min'],['Temperatura media','~15 °C']],moons:'La Luna. Su gravedad ayuda a estabilizar la inclinación terrestre y provoca las mareas junto con el Sol.',curiosity:'Si el Sol fuera una pelota de playa de un metro, la Tierra sería aproximadamente del tamaño de un grano de pimienta.',color:0x2879c8,focus:3.0},
+{id:'mars',name:'Marte',kind:'Planeta rocoso',size:.56,distance:16.5,tex:TEX+'mars_1k_color.jpg',tx:'mars',bump:1.6,tilt:25.2,spin:.0019,atmo:{c:0xff9a6a,s:1.05,k:.6},desc:'El planeta rojo debe su color al óxido de hierro de su polvo. Conserva huellas de antiguos ríos y lagos, volcanes gigantes y cañones inmensos.',facts:[['Diámetro','6,779 km'],['Año','687 días terrestres'],['Día','24 h 37 min'],['Temperatura media','−65 °C']],moons:'Fobos y Deimos: dos pequeñas lunas irregulares. Fobos se acerca lentamente a Marte.',curiosity:'En Marte se encuentra Olympus Mons, un volcán de unos 22 km de altura: casi tres veces la altura del Everest.',color:0xc65e42,focus:2.5},
+{id:'jupiter',name:'Júpiter',kind:'Gigante gaseoso',size:1.55,distance:23.5,tex:TEX+'jupiter.jpg',tx:'jupiter',tilt:3.1,spin:.0042,atmo:{c:0xe8c9a0,s:1.035,k:.45},desc:'El gigante del sistema solar. Sus bandas son enormes corrientes de nubes y su atmósfera alberga tormentas colosales que pueden durar siglos.',facts:[['Diámetro','139,820 km'],['Año','11.86 años terrestres'],['Día','9 h 56 min'],['Tipo','Gigante gaseoso']],moons:'Entre sus lunas principales están Ío, Europa, Ganímedes y Calisto. Europa podría ocultar un océano bajo su corteza de hielo.',curiosity:'La Gran Mancha Roja es una tormenta gigantesca que lleva observándose durante siglos y tiene un tamaño comparable al de la Tierra.',color:0xd5b08a,focus:5.2},
+{id:'saturn',name:'Saturno',kind:'Gigante gaseoso',size:1.3,distance:31.5,tex:TEX+'saturn.jpg',tx:'saturn',tilt:26.7,spin:.0038,atmo:{c:0xe8d9a8,s:1.03,k:.4},desc:'Un gigante gaseoso rodeado por un sistema de anillos extraordinario, formado por innumerables fragmentos de hielo y roca. Sus anillos son enormes, pero sorprendentemente delgados.',facts:[['Diámetro','116,460 km'],['Año','29.4 años terrestres'],['Día','~10.7 horas'],['Tipo','Gigante gaseoso']],moons:'Titán, Encélado, Rea y Jápeto. Titán posee lagos y mares de metano y etano líquidos.',curiosity:'Saturno tiene una densidad media menor que la del agua. Si existiera una bañera suficientemente grande, en teoría podría flotar.',color:0xd9c18f,focus:5.2},
+{id:'uranus',name:'Urano',kind:'Gigante helado',size:.98,distance:39.5,tex:TEX+'uranus.jpg',tx:'uranus',tilt:97.8,spin:-.0028,atmo:{c:0x9be8ee,s:1.06,k:.9},desc:'Un gigante helado de color azul verdoso por el metano de su atmósfera. Su eje está tan inclinado que parece rodar alrededor del Sol.',facts:[['Diámetro','50,724 km'],['Año','84 años terrestres'],['Día','17 h 14 min'],['Tipo','Gigante helado']],moons:'Titania, Oberón, Umbriel, Ariel y Miranda son algunas de sus lunas principales.',curiosity:'Su inclinación axial es de unos 98 grados: durante parte de su órbita, uno de sus polos apunta casi directamente hacia el Sol.',color:0x8ed8df,focus:3.6},
+{id:'neptune',name:'Neptuno',kind:'Gigante helado',size:.96,distance:47,tex:TEX+'neptune.jpg',tx:'neptune',tilt:28.3,spin:.003,atmo:{c:0x4a78ff,s:1.07,k:1.1},desc:'El planeta más lejano del Sol. Su intenso color azul y su atmósfera activa esconden vientos extraordinariamente rápidos y temperaturas muy bajas.',facts:[['Diámetro','49,244 km'],['Año','165 años terrestres'],['Día','16 h 6 min'],['Tipo','Gigante helado']],moons:'Tritón es su luna mayor. Orbita en sentido retrógrado y podría ser un objeto capturado del cinturón de Kuiper.',curiosity:'Neptuno fue descubierto en 1846 gracias a predicciones matemáticas sobre perturbaciones en la órbita de Urano.',color:0x315fd1,focus:3.6}
+];
+const moonSets={
+earth:[['Luna',.19,1.65]],
+mars:[['Fobos',.095,1.15],['Deimos',.065,1.65]],
+jupiter:[['Ío',.15,2.05],['Europa',.13,2.55],['Ganímedes',.2,3.1],['Calisto',.18,3.7]],
+saturn:[['Titán',.19,2.9],['Encélado',.085,3.4],['Rea',.12,3.9]],
+uranus:[['Titania',.13,1.9],['Oberón',.12,2.35],['Ariel',.09,2.8],['Miranda',.07,3.2]],
+neptune:[['Tritón',.15,2.1]]
+};
+// Respaldo si no hay internet para la lista de países
+const FALLBACK_COUNTRIES=[['México',19.43,-99.13],['Estados Unidos',38.9,-77.04],['Argentina',-34.6,-58.38],['Brasil',-23.55,-46.63],['España',40.42,-3.7],['Francia',48.86,2.35],['Reino Unido',51.51,-.12],['Japón',35.68,139.69],['China',39.9,116.4],['Kenia',-1.29,36.82],['Sudáfrica',-25.75,28.19],['Australia',-33.87,151.21],['India',28.61,77.21],['Italia',41.9,12.5],['Alemania',52.52,13.4],['Perú',-12.05,-77.04],['Colombia',4.71,-74.07],['Uruguay',-34.9,-56.16]];
+
+/* =====================================================================
+   ESCENA
+   ===================================================================== */
+let scene,camera,renderer,controls,raycaster,mouse,planetObjects=[],moonObjects=[],sunMesh,activeBody=null,spaceMotion=true,earthClouds=null;
+const host=document.getElementById('universe'),panel=document.getElementById('info'),loader=new THREE.TextureLoader();loader.setCrossOrigin('anonymous');
+scene=new THREE.Scene();scene.background=new THREE.Color(0x02040a);
+camera=new THREE.PerspectiveCamera(43,innerWidth/innerHeight,.05,420);camera.position.set(0,92,190);
+renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=0.92;host.appendChild(renderer.domElement);
+controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.055;controls.minDistance=.7;controls.maxDistance=115;controls.maxPolarAngle=Math.PI*.94;controls.target.set(0,0,0);
+scene.add(new THREE.AmbientLight(0x53627b,.20));
+const sunLight=new THREE.PointLight(0xffb45a,820,300,1.55);sunLight.position.set(0,0,0);scene.add(sunLight);
+
+/* ---------- utilidades de textura procedural (respaldo con los colores reales) ---------- */
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const mkCanvas=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c};
+function procTex(kind){
+ const W=1024,H=512,c=mkCanvas(W,H),x=c.getContext('2d');
+ const bands=(cols,wob)=>{const g=x.createLinearGradient(0,0,0,H);cols.forEach((col,i)=>g.addColorStop(i/(cols.length-1),col));x.fillStyle=g;x.fillRect(0,0,W,H);
+  for(let i=0;i<700;i++){x.fillStyle='rgba('+(Math.random()<.5?'255,255,255':'0,0,0')+','+rnd(.01,.05)+')';x.beginPath();x.ellipse(rnd(0,W),rnd(0,H),rnd(40,260),rnd(1.5,wob),0,0,6.3);x.fill()}};
+ const spots=(n,r0,r1,cols)=>{for(let i=0;i<n;i++){const px=rnd(0,W),py=rnd(0,H),r=rnd(r0,r1),g=x.createRadialGradient(px,py,0,px,py,r);g.addColorStop(0,cols[i%cols.length]);g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.beginPath();x.arc(px,py,r,0,6.3);x.fill()}};
+ const craters=n=>{for(let i=0;i<n;i++){const px=rnd(0,W),py=rnd(0,H),r=rnd(2,26);x.fillStyle='rgba(0,0,0,.18)';x.beginPath();x.arc(px,py,r,0,6.3);x.fill();x.strokeStyle='rgba(255,255,255,.14)';x.lineWidth=1.2;x.beginPath();x.arc(px-r*.12,py-r*.12,r,0,6.3);x.stroke()}};
+ const fill=col=>{x.fillStyle=col;x.fillRect(0,0,W,H)};
+ switch(kind){
+  case 'sun':
+   fill('#a92d0d');
+   bands(['#7e1c0b','#c63a0c','#f05a12','#a92708','#e94a0b','#6f1809','#d9440b'],34);
+   spots(1900,4,30,['rgba(255,178,42,.78)','rgba(255,92,12,.72)','rgba(120,20,5,.58)','rgba(255,205,75,.55)','rgba(220,48,8,.72)']);
+   for(let i=0;i<180;i++){const px=rnd(0,W),py=rnd(0,H),r=rnd(8,28);x.strokeStyle='rgba(255,190,70,.24)';x.lineWidth=rnd(1,3);x.beginPath();x.arc(px,py,r,0,6.28);x.stroke()}
+   break;
+  case 'mercury':fill('#8f8a85');spots(260,20,90,['rgba(190,185,178,.35)','rgba(80,76,72,.35)']);craters(900);break;
+  case 'venus':bands(['#c98a45','#e2b06b','#d79a52','#efc684','#cf9250'],9);spots(260,25,110,['rgba(255,214,150,.22)','rgba(160,90,40,.2)']);break;
+  case 'earth':
+   fill('#082d58');
+   spots(105,24,118,['rgba(24,91,54,.96)','rgba(65,116,55,.95)','rgba(148,119,70,.82)','rgba(27,73,44,.95)','rgba(176,145,91,.55)']);
+   spots(34,12,54,['rgba(25,112,68,.85)','rgba(10,50,36,.75)']);
+   x.fillStyle='rgba(210,221,222,.52)';x.fillRect(0,0,W,13);x.fillRect(0,H-18,W,18);
+   break;
+  case 'mars':fill('#9d3f25');spots(420,14,90,['rgba(91,35,24,.52)','rgba(214,113,66,.44)','rgba(177,74,40,.55)','rgba(235,151,91,.28)']);craters(420);x.fillStyle='rgba(221,207,190,.58)';x.fillRect(0,0,W,9);x.fillRect(0,H-11,W,11);break;
+  case 'jupiter':bands(['#9a6848','#d0a77d','#e5d1b0','#8e5539','#c18b61','#e8d9bf','#a66b48','#d9bd98','#76503d'],18);{const g=x.createRadialGradient(W*.62,H*.64,2,W*.62,H*.64,60);g.addColorStop(0,'#b8452c');g.addColorStop(1,'rgba(184,69,44,0)');x.fillStyle=g;x.beginPath();x.ellipse(W*.62,H*.64,64,34,0,0,6.3);x.fill()}break;
+  case 'saturn':bands(['#b69a67','#d9c18d','#ead8aa','#a88a5d','#d1b47d','#e4d2a6'],10);break;
+  case 'uranus':bands(['#398e9a','#56b0b5','#72c2c4','#3b8995'],7);break;
+  case 'neptune':bands(['#123b9a','#2054c2','#1745aa','#3670d5','#12388e'],9);for(let i=0;i<40;i++){x.fillStyle='rgba(235,245,255,.1)';x.beginPath();x.ellipse(rnd(0,W),rnd(0,H),rnd(30,140),rnd(1,4),0,0,6.3);x.fill()}break;
+  default:fill('#8d8d8d');spots(160,20,80,['rgba(190,190,190,.3)','rgba(70,70,70,.3)']);craters(700);
+ }
+ const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;return t;
+}
+// Se ve el color correcto al instante y, cuando llega la textura real, se sustituye.
+function paint(mat,url,kind,bump){
+ mat.map=procTex(kind);if(mat.color)mat.color.set(0xffffff);
+ if(bump){mat.bumpMap=mat.map;mat.bumpScale=bump}mat.needsUpdate=true;
+ if(!url)return;
+ loader.load(url,t=>{t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;mat.map=t;if(bump)mat.bumpMap=t;mat.needsUpdate=true},undefined,()=>{});
+}
+
+
+async function makeSolarReferenceTexture(){
+ const img=new Image();img.crossOrigin='anonymous';
+ img.src='assets/sol-referencia.jpg';
+ await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject});
+ const sw=img.naturalWidth,sh=img.naturalHeight,sc=mkCanvas(sw,sh),sx=sc.getContext('2d',{willReadFrequently:true});
+ sx.drawImage(img,0,0);const src=sx.getImageData(0,0,sw,sh).data;
+ const W=2048,H=1024,c=mkCanvas(W,H),ctx=c.getContext('2d');
+ const out=ctx.createImageData(W,H),d=out.data,cx=sw*.5,cy=sh*.5,rad=Math.min(sw*.275,sh*.39);
+ for(let y=0;y<H;y++){const lat=(.5-y/H)*Math.PI,cl=Math.cos(lat),sy=Math.sin(lat);
+  for(let x=0;x<W;x++){const lon=(x/W-.5)*Math.PI*2;
+   let px=cx+Math.sin(lon)*cl*rad,py=cy-sy*rad;
+   // The source is a full-disk solar observation. Reuse the disk projection around the far hemisphere
+   // while varying longitude to avoid a black backside or a visible rectangular image boundary.
+   px=Math.max(0,Math.min(sw-1,px));py=Math.max(0,Math.min(sh-1,py));
+   const ix=Math.floor(px),iy=Math.floor(py),si=(iy*sw+ix)*4,di=(y*W+x)*4;
+   const disk=((px-cx)*(px-cx)+(py-cy)*(py-cy))<rad*rad;
+   if(disk){d[di]=src[si];d[di+1]=src[si+1];d[di+2]=src[si+2];d[di+3]=255;}
+   else {const n=0.88+0.12*Math.sin(lon*19+lat*31);d[di]=150*n;d[di+1]=39*n;d[di+2]=8*n;d[di+3]=255;}
+  }
+ }
+ ctx.putImageData(out,0,0);const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=8;tex.needsUpdate=true;return tex;
+}
+
+/* ---------- Sol ---------- */
+function makeGlow(){const c=mkCanvas(256,256),x=c.getContext('2d'),g=x.createRadialGradient(128,128,4,128,128,128);g.addColorStop(0,'rgba(255,250,220,1)');g.addColorStop(.16,'rgba(255,190,90,.72)');g.addColorStop(.4,'rgba(255,105,35,.22)');g.addColorStop(1,'rgba(255,75,20,0)');x.fillStyle=g;x.fillRect(0,0,256,256);return new THREE.CanvasTexture(c)}
+const glow=makeGlow();
+const sunMat=new THREE.MeshBasicMaterial({color:0xffffff});
+sunMat.map=procTex('sun');
+makeSolarReferenceTexture().then(t=>{sunMat.map=t;sunMat.needsUpdate=true}).catch(()=>{});
+
+sunMesh=new THREE.Mesh(new THREE.SphereGeometry(bodies[0].size,96,96),sunMat);sunMesh.userData.body=bodies[0];scene.add(sunMesh);
+const sunHalo=new THREE.Sprite(new THREE.SpriteMaterial({map:glow,color:0xff9a35,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));sunHalo.scale.set(8.5,8.5,1);sunMesh.add(sunHalo);
+const corona=new THREE.Sprite(new THREE.SpriteMaterial({map:glow,color:0xffd27c,transparent:true,opacity:.16,blending:THREE.AdditiveBlending,depthWrite:false}));corona.scale.set(12,12,1);sunMesh.add(corona);
+
+/* ---------- Fondo: estrellas y Vía Láctea ---------- */
+{
+ const c=mkCanvas(2048,1024),x=c.getContext('2d');x.fillStyle='#02040a';x.fillRect(0,0,2048,1024);
+ x.save();x.translate(1024,512);x.rotate(-.42);
+ for(let i=0;i<900;i++){const px=rnd(-1300,1300),py=(Math.random()+Math.random()+Math.random()-1.5)*150,r=rnd(30,120),g=x.createRadialGradient(px,py,0,px,py,r);g.addColorStop(0,'rgba(150,170,255,'+rnd(.012,.04)+')');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.beginPath();x.arc(px,py,r,0,6.3);x.fill()}
+ x.restore();
+ for(let i=0;i<5200;i++){x.fillStyle='rgba('+(200+Math.random()*55|0)+',225,255,'+rnd(.25,1)+')';x.fillRect(rnd(0,2048),rnd(0,1024),Math.random()<.06?2:1,Math.random()<.06?2:1)}
+ const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
+ scene.add(new THREE.Mesh(new THREE.SphereGeometry(330,48,32),new THREE.MeshBasicMaterial({map:t,side:THREE.BackSide,depthWrite:false,fog:false})));
+}
+const starPositions=[];for(let i=0;i<4200;i++){const r=75+Math.random()*190,t=Math.random()*Math.PI*2,p=Math.acos(2*Math.random()-1);starPositions.push(r*Math.sin(p)*Math.cos(t),r*Math.cos(p),r*Math.sin(p)*Math.sin(t))}
+const starGeo=new THREE.BufferGeometry();starGeo.setAttribute('position',new THREE.Float32BufferAttribute(starPositions,3));scene.add(new THREE.Points(starGeo,new THREE.PointsMaterial({color:0xd6eaff,size:.14,transparent:true,opacity:.85,sizeAttenuation:true})));
+const orbitRoot=new THREE.Group();scene.add(orbitRoot);
+
+/* ---------- Cinturón de asteroides ---------- */
+const asteroidBelt=new THREE.Group();scene.add(asteroidBelt);
+{
+ const count=1850,asteroids=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1,1),new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,metalness:.04}),count),dummy=new THREE.Object3D(),palette=[0x8d8277,0xaaa092,0x655f59,0xb6a58c,0x777b80,0x9b8b78];
+ for(let i=0;i<count;i++){
+  const a=Math.random()*Math.PI*2,r=18.5+Math.random()*3.7,s=.025+Math.random()*.075;
+  dummy.position.set(Math.cos(a)*r,(Math.random()-.5)*.62,Math.sin(a)*r);dummy.rotation.set(Math.random()*3.14,Math.random()*3.14,Math.random()*3.14);
+  dummy.scale.set(s*(.7+Math.random()),s*(.6+Math.random()),s*(.7+Math.random()));dummy.updateMatrix();asteroids.setMatrixAt(i,dummy.matrix);asteroids.setColorAt(i,new THREE.Color(palette[Math.floor(Math.random()*palette.length)]));
+ }
+ asteroidBelt.add(asteroids);
+ const beltOrbit=new THREE.Mesh(new THREE.RingGeometry(18.45,22.25,256),new THREE.MeshBasicMaterial({color:0x9a8c79,transparent:true,opacity:.075,side:THREE.DoubleSide}));beltOrbit.rotation.x=Math.PI/2;asteroidBelt.add(beltOrbit);
+}
+
+/* =====================================================================
+   PLANETAS
+   ===================================================================== */
+function addOrbit(radius){const ring=new THREE.Mesh(new THREE.RingGeometry(radius-.012,radius+.012,220),new THREE.MeshBasicMaterial({color:0x9db7d5,transparent:true,opacity:.29,side:THREE.DoubleSide}));ring.rotation.x=Math.PI/2;scene.add(ring)}
+
+// Atmósfera: halo con efecto Fresnel
+function atmosphere(radius,color,scale,k){
+ return new THREE.Mesh(new THREE.SphereGeometry(radius*scale,64,64),new THREE.ShaderMaterial({
+  uniforms:{c:{value:new THREE.Color(color)},k:{value:k}},
+  vertexShader:'varying vec3 vN;void main(){vN=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+  fragmentShader:'uniform vec3 c;uniform float k;varying vec3 vN;void main(){float i=pow(max(0.,.72-dot(vN,vec3(0.,0.,1.))),2.5);gl_FragColor=vec4(c*i*k*1.15,i*k*.58);}',
+  side:THREE.BackSide,blending:THREE.AdditiveBlending,transparent:true,depthWrite:false}));
+}
+// Anillos con textura radial (huecos tipo Cassini incluidos)
+function ringTexture(thin){
+ const c=mkCanvas(1024,4),x=c.getContext('2d');
+ const bands=thin?[[.0,.45,'rgba(150,170,175,.05)'],[.45,.5,'rgba(170,200,205,.4)'],[.5,.8,'rgba(150,170,175,.05)'],[.8,.85,'rgba(170,200,205,.35)'],[.85,1,'rgba(0,0,0,0)']]
+  :[[0,.06,'rgba(120,105,85,.22)'],[.06,.22,'rgba(176,160,130,.6)'],[.22,.28,'rgba(120,105,85,.32)'],[.28,.46,'rgba(226,210,176,.94)'],[.46,.52,'rgba(30,26,22,.08)'],[.52,.64,'rgba(216,200,166,.88)'],[.64,.83,'rgba(196,180,148,.8)'],[.83,.86,'rgba(50,44,36,.1)'],[.86,.98,'rgba(170,154,126,.55)'],[.98,1,'rgba(0,0,0,0)']];
+ bands.forEach(([a,b,col])=>{x.fillStyle=col;x.fillRect(a*1024,0,(b-a)*1024+1,4)});
+ for(let i=0;i<320;i++){x.fillStyle='rgba('+(Math.random()<.5?'255,245,225':'40,34,28')+','+rnd(.03,.14)+')';x.fillRect(rnd(0,1024),0,rnd(1,5),4)}
+ const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;
+}
+function makeRing(inner,outer,thin){
+ const g=new THREE.RingGeometry(inner,outer,180,1),p=g.attributes.position,uv=g.attributes.uv;
+ for(let i=0;i<p.count;i++)uv.setXY(i,(Math.hypot(p.getX(i),p.getY(i))-inner)/(outer-inner),.5);
+ const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({map:ringTexture(thin),transparent:true,side:THREE.DoubleSide,roughness:1,depthWrite:false}));
+ m.rotation.x=-Math.PI/2;return m;
+}
+// La Tierra: mapa de día, relieve, brillo oceánico, nubes y luces de ciudades
+function earthMaterial(){
+ const m=new THREE.MeshPhongMaterial({specular:new THREE.Color(0x3a5470),shininess:24});
+ paint(m,TEX+'earth_atmos_2048.jpg','earth',0);
+ loader.load(TEX+'earth_specular_2048.jpg',t=>{m.specularMap=t;m.needsUpdate=true},undefined,()=>{});
+ loader.load(TEX+'earth_normal_2048.jpg',t=>{m.normalMap=t;m.normalScale.set(.75,.75);m.needsUpdate=true},undefined,()=>{});
+ return m;
+}
+function earthExtras(mesh,r){
+ loader.load(TEX+'earth_clouds_1024.png',t=>{t.colorSpace=THREE.SRGBColorSpace;earthClouds=new THREE.Mesh(new THREE.SphereGeometry(r*1.012,96,96),new THREE.MeshPhongMaterial({map:t,transparent:true,opacity:.48,depthWrite:false}));mesh.add(earthClouds)},undefined,()=>{});
+ loader.load(TEX+'earth_lights_2048.png',t=>{
+  t.colorSpace=THREE.SRGBColorSpace;
+  mesh.add(new THREE.Mesh(new THREE.SphereGeometry(r*1.004,96,96),new THREE.ShaderMaterial({
+   uniforms:{t:{value:t}},transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,
+   vertexShader:'varying vec2 vUv;varying vec3 vN;varying vec3 vP;void main(){vUv=uv;vN=normalize(mat3(modelMatrix)*normal);vec4 w=modelMatrix*vec4(position,1.);vP=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}',
+   fragmentShader:'uniform sampler2D t;varying vec2 vUv;varying vec3 vN;varying vec3 vP;void main(){float d=dot(normalize(vN),normalize(-vP));float n=smoothstep(.05,-.25,d);gl_FragColor=vec4(texture2D(t,vUv).rgb*n*1.7,1.);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}'})));
+ },undefined,()=>{});
+}
+function addMoon(parent,planetId,moonData){
+ const [name,size,radius]=moonData,group=new THREE.Group();parent.add(group);
+ const mat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:1});paint(mat,TEX+'moon_1024.jpg','moon',1.2);
+ const mesh=new THREE.Mesh(new THREE.SphereGeometry(size,40,40),mat),planet=bodies.find(b=>b.id===planetId);
+ mesh.userData.body={id:'moon',name,kind:'Luna natural',size,distance:radius,desc:`${name} es una luna natural de ${planet.name}. Su tamaño y su órbita se muestran de forma ampliada para que puedas distinguirla durante la exploración.`,facts:[['Categoría','Satélite natural'],['Planeta',planet.name]],moons:'Forma parte del sistema de satélites naturales de su planeta.',curiosity:`¡Estás observando ${name}, un mundo que acompaña a su planeta en su viaje alrededor del Sol!`,color:0xb9c3d1,focus:Math.max(.65,size*4.4)};
+ group.add(mesh);moonObjects.push({group,mesh,radius,phase:Math.random()*6.28,speed:.0025+Math.random()*.002,planetId});
+}
+bodies.slice(1).forEach((b,i)=>{
+ addOrbit(b.distance);
+ const group=new THREE.Group();orbitRoot.add(group);
+ const tilt=new THREE.Group();tilt.rotation.z=THREE.MathUtils.degToRad(b.tilt||0);group.add(tilt);
+ let mat;if(b.id==='earth')mat=earthMaterial();else{mat=new THREE.MeshStandardMaterial({roughness:.95,metalness:0});paint(mat,b.tex,b.tx,b.bump||0)}
+ const mesh=new THREE.Mesh(new THREE.SphereGeometry(b.size,112,112),mat);mesh.userData.body=b;mesh.userData.bodyIndex=i+1;tilt.add(mesh);
+ if(b.atmo)tilt.add(atmosphere(b.size,b.atmo.c,b.atmo.s,b.atmo.k));
+ if(b.id==='earth')earthExtras(mesh,b.size);
+ if(b.id==='saturn')tilt.add(makeRing(1.5,2.75,false));
+ if(b.id==='uranus')tilt.add(makeRing(1.25,1.75,true));
+ if(b.id==='neptune')tilt.add(makeRing(1.3,1.7,true)).children.at(-1).material.opacity=.45;
+ planetObjects.push({group,tilt,mesh,body:b,angle:i*1.16+.4,speed:.00045/(1+i*.14),spin:b.spin||.0015});
+ (moonSets[b.id]||[]).forEach(m=>addMoon(group,b.id,m));
+});
+
+/* =====================================================================
+   INTERFAZ DEL SISTEMA SOLAR
+   ===================================================================== */
+const nav=document.getElementById('planet-nav');
+bodies.slice(1).forEach(b=>{const btn=document.createElement('button');btn.className='planet-btn';btn.textContent=b.name;btn.onclick=()=>travelTo(b);nav.appendChild(btn)});
+function setActive(body){activeBody=body;document.querySelectorAll('.planet-btn').forEach((el,i)=>el.classList.toggle('active',bodies[i+1].id===body.id));const l=document.getElementById('focus-label');l.textContent=body.name;l.classList.add('show')}
+function openDetails(body){document.getElementById('kicker').textContent=body.kind||'Satélite natural';document.getElementById('title').textContent=body.name;document.getElementById('description').textContent=body.desc;document.getElementById('facts').innerHTML=body.facts.map(([k,v])=>`<div class="fact"><small>${k}</small><strong>${v}</strong></div>`).join('');document.getElementById('moons').textContent=body.moons;document.getElementById('curiosity').textContent=body.curiosity;document.getElementById('moon-label').textContent=body.id==='sun'?'Compañeros del Sol':'Lunas destacadas';panel.classList.add('open')}
+function closeDetails(){panel.classList.remove('open')}
+function bodyPosition(body){if(body.id==='sun')return new THREE.Vector3();const p=planetObjects.find(x=>x.body.id===body.id);if(p){const v=new THREE.Vector3();p.mesh.getWorldPosition(v);return v}const m=moonObjects.find(x=>x.mesh.userData.body===body);if(m){const v=new THREE.Vector3();m.mesh.getWorldPosition(v);return v}return new THREE.Vector3()}
+function flyCamera(destination,target,duration){
+ const fromCam=camera.position.clone(),fromTarget=controls.target.clone(),start=performance.now();
+ function move(now){const raw=Math.min((now-start)/duration,1),t=raw*raw*(3-2*raw);camera.position.lerpVectors(fromCam,destination,t);controls.target.lerpVectors(fromTarget,target,t);if(raw<1)requestAnimationFrame(move)}
+ requestAnimationFrame(move);
+}
+function travelTo(body){
+ spaceMotion=false;setActive(body);openDetails(body);document.getElementById('country-explorer').hidden=body.id!=='earth';
+ const target=bodyPosition(body),radius=body.focus||Math.max(.8,body.size*3.2),direction=new THREE.Vector3().subVectors(camera.position,controls.target).normalize();if(direction.length()<.01)direction.set(0,0,1);
+ flyCamera(target.clone().add(direction.multiplyScalar(radius)),target,1500);
+}
+function returnOverview(){
+ spaceMotion=true;document.getElementById('country-explorer').hidden=true;activeBody=null;closeDetails();document.getElementById('focus-label').classList.remove('show');document.querySelectorAll('.planet-btn').forEach(x=>x.classList.remove('active'));
+ const from=camera.position.clone(),fromTarget=controls.target.clone(),to=new THREE.Vector3(0,31,83),start=performance.now();
+ function move(now){const t=Math.min((now-start)/1300,1),e=1-Math.pow(1-t,3);camera.position.lerpVectors(from,to,e);controls.target.lerpVectors(fromTarget,new THREE.Vector3(),e);if(t<1)requestAnimationFrame(move)}
+ requestAnimationFrame(move);
+}
+document.getElementById('close').onclick=closeDetails;document.getElementById('overview').onclick=returnOverview;document.getElementById('overview-top').onclick=returnOverview;document.getElementById('revisit').onclick=()=>{if(activeBody)travelTo(activeBody)};
+
+/* =====================================================================
+   PAÍSES (Natural Earth) · selección desde la lista o sobre el globo
+   ===================================================================== */
+let countries=[],selectedCountry=null;
+function prep(f){
+ const pr=f.properties,g=f.geometry,list=g.type==='Polygon'?[g.coordinates]:g.coordinates;
+ const polys=list.map(r=>{let w=1e9,s=1e9,e=-1e9,n=-1e9;r[0].forEach(([x,y])=>{if(x<w)w=x;if(x>e)e=x;if(y<s)s=y;if(y>n)n=y});return{r,b:[w,s,e,n],a:(e-w)*(n-s)}});
+ const big=polys.reduce((a,b)=>b.a>a.a?b:a,polys[0]);
+ return{name:pr.NAME_ES||pr.NAME,lat:pr.LABEL_Y??(big.b[1]+big.b[3])/2,lon:pr.LABEL_X??(big.b[0]+big.b[2])/2,polys,fit:(big.b[2]-big.b[0])<300?[[big.b[0],big.b[1]],[big.b[2],big.b[3]]]:null,feature:f};
+}
+const ringHas=(x,y,r)=>{let ins=false;for(let i=0,j=r.length-1;i<r.length;j=i++){const xi=r[i][0],yi=r[i][1],xj=r[j][0],yj=r[j][1];if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)ins=!ins}return ins};
+const polyHas=(x,y,p)=>{if(x<p.b[0]||x>p.b[2]||y<p.b[1]||y>p.b[3]||!ringHas(x,y,p.r[0]))return false;for(let k=1;k<p.r.length;k++)if(ringHas(x,y,p.r[k]))return false;return true};
+const countryAt=(lat,lon)=>countries.find(c=>c.polys&&c.polys.some(p=>polyHas(lon,lat,p)))||null;
+function fillSelects(){
+ const opts='<option value="">Selecciona un país…</option>'+countries.map((c,i)=>`<option value="${i}">${c.name}</option>`).join('');
+ document.getElementById('country-select').innerHTML=opts;
+ document.getElementById('map-country').innerHTML='<option value="">Cambiar de país…</option>'+countries.map((c,i)=>`<option value="${i}">${c.name}</option>`).join('');
+}
+async function loadCountries(){
+ for(const url of GEO_URLS){
+  try{const r=await fetch(url);if(!r.ok)continue;const j=await r.json();countries=j.features.filter(f=>f.geometry).map(prep).sort((a,b)=>a.name.localeCompare(b.name,'es'));break}catch(e){}
+ }
+ if(!countries.length)countries=FALLBACK_COUNTRIES.map(([name,lat,lon])=>({name,lat,lon,polys:null,fit:null,feature:null}));
+ fillSelects();
+}
+loadCountries();
+
+// Descenso del globo hasta el país y apertura del mapa
+function zoomGlobeTo(lat,lon){
+ const earth=planetObjects.find(o=>o.body.id==='earth');if(!earth)return;
+ const r=earth.body.size,phi=THREE.MathUtils.degToRad(90-lat),theta=THREE.MathUtils.degToRad(lon+180);
+ const local=new THREE.Vector3(-r*Math.sin(phi)*Math.cos(theta),r*Math.cos(phi),r*Math.sin(phi)*Math.sin(theta));
+ earth.mesh.updateWorldMatrix(true,false);
+ const world=earth.mesh.localToWorld(local.clone()),normal=world.clone().sub(earth.mesh.getWorldPosition(new THREE.Vector3())).normalize();
+ flyCamera(world.clone().add(normal.multiplyScalar(.34)),world,1350);
+}
+function goCountry(c){
+ if(!c)return;selectedCountry=c;
+ const label=document.getElementById('focus-label');label.textContent=c.name;label.classList.add('show');
+ const earth=bodies.find(b=>b.id==='earth');
+ const go=()=>{zoomGlobeTo(c.lat,c.lon);setTimeout(()=>openCountryMap(c,true),1450)};
+ if(!activeBody||activeBody.id!=='earth'){travelTo(earth);setTimeout(go,1600)}else go();
+}
+document.getElementById('country-zoom').onclick=()=>{const v=document.getElementById('country-select').value;if(v!=='')goCountry(countries[+v])};
+
+/* =====================================================================
+   MAPA TIPO GOOGLE MAPS (MapLibre + OpenFreeMap)
+   países → estados → ciudades según el zoom
+   ===================================================================== */
+let map=null,satMode=false;
+const LIBERTY='https://tiles.openfreemap.org/styles/liberty';
+const NAME_ES=['coalesce',['get','name:es'],['get','name_es'],['get','name_en'],['get','name']];
+const SAT_STYLE={version:8,glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
+ sources:{sat:{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],tileSize:256,maxzoom:19,attribution:'Imágenes © Esri, Maxar, Earthstar Geographics'},openmaptiles:{type:'vector',url:'https://tiles.openfreemap.org/planet'}},
+ layers:[{id:'sat',type:'raster',source:'sat'}]};
+const hint=t=>{const h=document.getElementById('map-hint');h.textContent=t;h.style.opacity=1;clearTimeout(hint.t);hint.t=setTimeout(()=>h.style.opacity=0,6500)};
+function labelLayer(id,cls,minzoom,maxzoom,size,bold){
+ return{id,type:'symbol',source:'openmaptiles','source-layer':'place',filter:['in','class',...cls],minzoom,maxzoom,
+  layout:{'text-field':NAME_ES,'text-font':[bold?'Noto Sans Bold':'Noto Sans Regular'],'text-size':size,'text-max-width':8},
+  paint:{'text-color':'#ffffff','text-halo-color':'rgba(0,0,0,.8)','text-halo-width':1.6}};
+}
+function onStyle(){
+ const st=map.getStyle();
+ if(satMode){ // etiquetas sobre el satélite
+  [labelLayer('l-country',['country'],0,7,['interpolate',['linear'],['zoom'],1,12,6,20],true),
+   labelLayer('l-state',['state','province'],3,9,['interpolate',['linear'],['zoom'],3,10,8,16],true),
+   labelLayer('l-city',['city'],3,14,['interpolate',['linear'],['zoom'],3,10,10,16],true),
+   labelLayer('l-town',['town'],8,15,13,false),labelLayer('l-village',['village','suburb'],11,18,12,false)].forEach(l=>map.addLayer(l));
+ }else{ // nombres en español en el mapa estándar
+  st.layers.forEach(l=>{if(l.type==='symbol'&&['place','water_name'].includes(l['source-layer']))map.setLayoutProperty(l.id,'text-field',NAME_ES)});
+ }
+ // Fronteras reforzadas: país (continua) y estados (discontinua)
+ map.addLayer({id:'b-country',type:'line',source:'openmaptiles','source-layer':'boundary',filter:['all',['==','admin_level',2],['!=','maritime',1]],paint:{'line-color':satMode?'#ffd166':'#c0392b','line-width':['interpolate',['linear'],['zoom'],1,.8,6,2.2,12,3.2],'line-opacity':.95}});
+ map.addLayer({id:'b-state',type:'line',source:'openmaptiles','source-layer':'boundary',minzoom:3,filter:['all',['==','admin_level',4],['!=','maritime',1]],paint:{'line-color':satMode?'#8ee9ff':'#e67e22','line-width':['interpolate',['linear'],['zoom'],3,.6,8,1.6,12,2.4],'line-dasharray':[3,2],'line-opacity':.9}});
+ if(selectedCountry&&selectedCountry.feature){
+  map.addSource('sel',{type:'geojson',data:selectedCountry.feature});
+  map.addLayer({id:'sel-fill',type:'fill',source:'sel',paint:{'fill-color':'#35d0ff','fill-opacity':.09}});
+  map.addLayer({id:'sel-line',type:'line',source:'sel',paint:{'line-color':'#35d0ff','line-width':2.4}});
+ }
+}
+function updLevel(){
+ const z=map.getZoom();
+ document.getElementById('map-level').textContent=z<4.3?'Nivel: países':z<7?'Nivel: estados y regiones':z<10.5?'Nivel: ciudades':'Nivel: calles y barrios';
+}
+function ensureMap(){
+ if(map)return true;
+ if(!window.maplibregl){hint('No se pudo cargar el motor de mapas. Revisa tu conexión.');return false}
+ map=new maplibregl.Map({container:'country-map',style:LIBERTY,center:[0,20],zoom:1.2,maxPitch:70,attributionControl:{compact:true}});
+ map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'bottom-right');
+ map.addControl(new maplibregl.ScaleControl({unit:'metric'}),'bottom-left');
+ map.on('style.load',onStyle);map.on('zoom',updLevel);
+ map.on('error',e=>{if(e&&e.error&&/Failed to fetch|NetworkError|Load failed/i.test(e.error.message||''))hint('No se pudieron descargar los mapas. Revisa tu conexión.')});
+ return true;
+}
+function flyToCountry(c,fromGlobe){
+ selectedCountry=c;
+ if(map.getSource('sel')&&c.feature)map.getSource('sel').setData(c.feature);
+ document.getElementById('map-place').textContent=c.name;
+ if(fromGlobe)map.jumpTo({center:[c.lon,c.lat],zoom:1.2,pitch:0,bearing:0});
+ if(c.fit)map.fitBounds(c.fit,{padding:{top:100,bottom:70,left:40,right:40},duration:fromGlobe?4600:3000,maxZoom:7,essential:true});
+ else map.flyTo({center:[c.lon,c.lat],zoom:5,duration:3500,essential:true});
+ hint('Sigue acercando: aparecerán los estados y luego las ciudades');
+}
+function openCountryMap(c,fromGlobe){
+ document.getElementById('map-screen').classList.add('open');
+ if(!ensureMap())return;
+ document.getElementById('map-place').textContent=c.name;
+ if(map.isStyleLoaded())flyToCountry(c,fromGlobe);else map.once('load',()=>flyToCountry(c,fromGlobe));
+ setTimeout(()=>map.resize(),300);
+}
+document.getElementById('map-back').onclick=()=>{
+ document.getElementById('map-screen').classList.remove('open');
+ const earth=bodies.find(b=>b.id==='earth');if(activeBody&&activeBody.id==='earth')travelTo(earth); // regresa a la vista del planeta
+};
+document.getElementById('map-style').onclick=e=>{
+ satMode=!satMode;e.target.textContent=satMode?'Mapa':'Satélite';
+ map.setStyle(satMode?SAT_STYLE:LIBERTY,{diff:false});
+};
+document.getElementById('map-country').onchange=e=>{const v=e.target.value;if(v!==''&&map){flyToCountry(countries[+v],false);e.target.value=''}};
+addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('map-screen').classList.contains('open'))document.getElementById('map-back').click()});
+
+/* =====================================================================
+   SELECCIÓN CON DOBLE CLIC / DOBLE TOQUE
+   ===================================================================== */
+raycaster=new THREE.Raycaster();mouse=new THREE.Vector2();
+function selectAt(cx,cy){
+ const r=renderer.domElement.getBoundingClientRect();mouse.x=(cx-r.left)/r.width*2-1;mouse.y=-((cy-r.top)/r.height)*2+1;raycaster.setFromCamera(mouse,camera);
+ const hits=raycaster.intersectObjects([sunMesh,...planetObjects.map(x=>x.mesh),...moonObjects.map(x=>x.mesh)],false);
+ if(!hits.length)return;
+ const hit=hits[0],body=hit.object.userData.body;if(!body)return;
+ // Con la Tierra ya seleccionada, el doble clic elige el país tocado
+ if(body.id==='earth'&&activeBody&&activeBody.id==='earth'&&hit.uv){
+  const lon=hit.uv.x*360-180,lat=hit.uv.y*180-90,c=countryAt(lat,lon),label=document.getElementById('focus-label');
+  if(c){goCountry(c)}else{label.textContent='Océano o territorio sin país';setTimeout(()=>{if(activeBody)label.textContent=activeBody.name},1800)}
+  return;
+ }
+ travelTo(body);
+}
+renderer.domElement.addEventListener('dblclick',ev=>selectAt(ev.clientX,ev.clientY));
+{ // doble toque en móviles
+ let last=0,lx=0,ly=0,dx=0,dy=0;
+ renderer.domElement.addEventListener('pointerdown',e=>{dx=e.clientX;dy=e.clientY});
+ renderer.domElement.addEventListener('pointerup',e=>{
+  if(e.pointerType!=='touch'||Math.hypot(e.clientX-dx,e.clientY-dy)>10)return;
+  const now=performance.now();
+  if(now-last<380&&Math.hypot(e.clientX-lx,e.clientY-ly)<30){selectAt(e.clientX,e.clientY);last=0}else{last=now;lx=e.clientX;ly=e.clientY}
+ });
+}
+
+/* =====================================================================
+   SIMULADOR 3D DE ECLIPSES (escena independiente)
+   ===================================================================== */
+let eclipseRenderer=null,eclipseScene=null,eclipseCamera=null,eclipseControls=null,eclipseBodies=[],eclipseMode='solar',eclipseFrame=0;
+function buildEclipseScene(){
+ const canvas=document.getElementById('eclipse-canvas');
+ if(eclipseRenderer)return;
+ eclipseScene=new THREE.Scene();eclipseScene.background=new THREE.Color(0x02040a);
+ eclipseCamera=new THREE.PerspectiveCamera(38,innerWidth/innerHeight,.1,120);eclipseCamera.position.set(0,4.6,18);
+ eclipseRenderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});eclipseRenderer.setPixelRatio(Math.min(devicePixelRatio,2));eclipseRenderer.setSize(innerWidth,innerHeight);eclipseRenderer.outputColorSpace=THREE.SRGBColorSpace;eclipseRenderer.shadowMap.enabled=true;eclipseRenderer.shadowMap.type=THREE.PCFSoftShadowMap;
+ eclipseControls=new OrbitControls(eclipseCamera,canvas);eclipseControls.enableDamping=true;eclipseControls.minDistance=7;eclipseControls.maxDistance=34;
+ const starGeo=new THREE.BufferGeometry(),pos=[];for(let i=0;i<1800;i++){const rr=35+Math.random()*30,a=Math.random()*Math.PI*2,b=Math.acos(2*Math.random()-1);pos.push(rr*Math.sin(b)*Math.cos(a),rr*Math.cos(b),rr*Math.sin(b)*Math.sin(a))}starGeo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));eclipseScene.add(new THREE.Points(starGeo,new THREE.PointsMaterial({color:0xc9ddff,size:.12})));
+ const sun=new THREE.Mesh(new THREE.SphereGeometry(2.05,96,96),new THREE.MeshBasicMaterial({color:0xff5a12}));sun.position.x=-8;eclipseScene.add(sun);
+ const glowSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:glow,color:0xff8a24,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));glowSprite.scale.set(10,10,1);sun.add(glowSprite);
+ const earth=new THREE.Mesh(new THREE.SphereGeometry(1.28,96,96),new THREE.MeshStandardMaterial({color:0x174f91,roughness:1,metalness:0}));earth.position.set(0,0,0);eclipseScene.add(earth);
+ const moon=new THREE.Mesh(new THREE.SphereGeometry(.36,64,64),new THREE.MeshStandardMaterial({color:0xb5b7b1,roughness:1}));moon.position.set(2.0,0,0);eclipseScene.add(moon);
+ const light=new THREE.DirectionalLight(0xffd6a0,1.65);light.position.copy(sun.position);light.castShadow=true;light.shadow.mapSize.set(2048,2048);light.shadow.camera.left=-8;light.shadow.camera.right=8;light.shadow.camera.top=8;light.shadow.camera.bottom=-8;light.shadow.bias=-0.00015;eclipseScene.add(light);eclipseScene.add(light.target);earth.castShadow=true;earth.receiveShadow=true;moon.castShadow=true;moon.receiveShadow=true;eclipseScene.add(new THREE.AmbientLight(0x26344d,.07));
+ // Corona visible around the solar disc during totality
+ const coronaMesh=new THREE.Mesh(new THREE.SphereGeometry(2.22,80,80),new THREE.MeshBasicMaterial({color:0xffb45f,transparent:true,opacity:.10,side:THREE.BackSide}));sun.add(coronaMesh);
+ eclipseBodies={sun,earth,moon,light,coronaMesh};setEclipseMode('solar');animateEclipse();
+}
+function setEclipseMode(mode){
+ eclipseMode=mode;if(!eclipseBodies.sun)return;
+ const {sun,earth,moon,light,coronaMesh}=eclipseBodies;
+ if(mode==='solar'){
+  sun.position.set(-8,0,0);earth.position.set(0,0,0);moon.position.set(-2.05,0,0); // Sol - Luna - Tierra
+  document.getElementById('eclipse-description').textContent='La Luna se interpone entre el Sol y la Tierra. Observa cómo su silueta cubre el disco solar; la corona queda visible alrededor durante la totalidad.';
+  document.getElementById('solar-mode').classList.add('active');document.getElementById('lunar-mode').classList.remove('active');
+ }else{
+  sun.position.set(-8,0,0);earth.position.set(0,0,0);moon.position.set(2.45,0,0); // Sol - Tierra - Luna
+  document.getElementById('eclipse-description').textContent='La Tierra se interpone entre el Sol y la Luna. La Luna atraviesa el cono de sombra terrestre y puede adquirir un tono rojizo.';
+  document.getElementById('lunar-mode').classList.add('active');document.getElementById('solar-mode').classList.remove('active');
+ }
+ light.position.copy(sun.position);eclipseCamera.position.set(0,4.6,18);eclipseControls.target.set(0,0,0);
+}
+function animateEclipse(){
+ if(!eclipseRenderer)return;
+ eclipseFrame=requestAnimationFrame(animateEclipse);
+ if(document.getElementById('eclipse-lab').classList.contains('open')){
+  const {moon,earth,sun,coronaMesh}=eclipseBodies;
+  if(eclipseMode==='solar'){moon.position.y=Math.sin(performance.now()*.00055)*.025;moon.material.color.setHex(0x252b36);coronaMesh.material.opacity=.10+Math.sin(performance.now()*.001)*.025}
+  else{moon.position.y=Math.sin(performance.now()*.00035)*.08;moon.material.color.setHex(0x9f4938)}
+  moon.rotation.y+=.003;earth.rotation.y+=.0008;sun.rotation.y+=.0004;eclipseControls.update();eclipseRenderer.render(eclipseScene,eclipseCamera);
+ }
+}
+document.getElementById('eclipse-open').onclick=()=>{document.getElementById('eclipse-lab').classList.add('open');buildEclipseScene();if(eclipseRenderer){eclipseRenderer.setSize(innerWidth,innerHeight);eclipseCamera.aspect=innerWidth/innerHeight;eclipseCamera.updateProjectionMatrix()}};
+document.getElementById('eclipse-close').onclick=()=>document.getElementById('eclipse-lab').classList.remove('open');
+document.getElementById('solar-mode').onclick=()=>setEclipseMode('solar');document.getElementById('lunar-mode').onclick=()=>setEclipseMode('lunar');
+
+/* =====================================================================
+   ANIMACIÓN
+   ===================================================================== */
+function animate(){
+ requestAnimationFrame(animate);
+ if(spaceMotion){
+  planetObjects.forEach(o=>{o.angle+=o.speed;o.group.position.set(Math.cos(o.angle)*o.body.distance,0,Math.sin(o.angle)*o.body.distance);o.mesh.rotation.y+=o.spin});
+  moonObjects.forEach(m=>{m.phase+=m.speed;m.group.position.set(Math.cos(m.phase)*m.radius,Math.sin(m.phase*.55)*m.radius*.13,Math.sin(m.phase)*m.radius)});
+  if(earthClouds)earthClouds.rotation.y+=.0004;
+  sunMesh.rotation.y+=.0009;sunHalo.material.rotation+=.0007;corona.material.rotation-=.0003;asteroidBelt.rotation.y+=.000035;
+ }
+ controls.update();renderer.render(scene,camera);
+}
+animate();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));if(map)map.resize();if(eclipseRenderer){eclipseRenderer.setSize(innerWidth,innerHeight);eclipseCamera.aspect=innerWidth/innerHeight;eclipseCamera.updateProjectionMatrix()}});
+setTimeout(()=>{
+ document.getElementById('loading').classList.add('hide');
+ const from=camera.position.clone(),to=new THREE.Vector3(0,31,83),start=performance.now(),duration=5200;
+ function cinematicEntry(now){const raw=Math.min((now-start)/duration,1),e=1-Math.pow(1-raw,3);camera.position.lerpVectors(from,to,e);controls.target.set(0,0,0);if(raw<1)requestAnimationFrame(cinematicEntry)}
+ requestAnimationFrame(cinematicEntry);
+},650);
+</script>
+</body></html>

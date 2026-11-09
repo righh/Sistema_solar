@@ -1,0 +1,17 @@
+SISTEMA SOLAR 3D — EDICIÓN REALISTA Y MÓVIL
+
+1. Abre la carpeta con VS Code.
+2. Ejecuta index.html con Live Server (no abras el archivo directamente).
+3. El sitio usa Three.js, MapLibre y texturas planetarias externas; requiere conexión a Internet.
+4. Firebase está configurado con el proyecto sistemasolar-30c85.
+5. Para registrar visitas en Firestore, habilita Cloud Firestore y publica reglas que permitan crear documentos validados en la colección 'visitas'. No uses reglas abiertas en producción.
+
+Cambios:
+- Textura solar generada tomando como referencia cromática la fotografía sol-referencia.jpg.
+- Iluminación y exposición reducidas para evitar planetas lavados.
+- Colores procedurales más ricos para Tierra, Marte, Júpiter, Saturno, Urano y Neptuno.
+- Fichas planetarias sin fotografías.
+- Simulador de eclipses con cuerpos más grandes y tonos de sombra mejorados.
+- Interfaz adaptada a pantallas móviles, safe areas y controles táctiles.
+
+Nota: las distancias y tamaños del sistema están escalados para facilitar la exploración; no son una representación a escala física exacta.
